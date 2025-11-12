@@ -115,19 +115,39 @@ async function addCustomWords(text) {
 							priority = num;
 						}
 						break;
-					case 4:
-						// a1111 csv format?
-						value = n[0];
-						priority = +n[2];
-						const aliases = n[3]?.trim();
-						if (aliases && aliases !== "null") { // Weird null in an example csv, maybe they are JSON.parsing the last column?
+case 4: { // 使用大括号创建一个独立的代码块
+						const value = n[0];      // 本名, e.g., "1girl"
+						const priority = +n[2];  // 词频/优先级, e.g., 5975112
+						const aliases = n[3]?.trim(); // 别名字符串
+						let chineseAlias;        // 用来存储找到的中文翻译
+
+						// 1. 正常处理所有的别名
+						if (aliases && aliases !== "null") {
 							const split = aliases.split(",");
-							for (const text of split) {
-								p[text] = { text, priority, value };
+							for (const aliasText of split) {
+								const trimmedText = aliasText.trim();
+								// 为每个别名创建补全项，确保输入别名能找到本名
+								p[trimmedText] = { text: trimmedText, priority, value };
+
+								// 2. 检查并提取中文翻译
+								// /[\u4e00-\u9fa5]/ 是一个正则表达式，用来匹配任意中文字符
+								if (!chineseAlias && /[\u4e00-\u9fa5]/.test(trimmedText)) {
+									chineseAlias = trimmedText;
+								}
 							}
 						}
-						text = value;
-						break;
+
+						// 3. 为本名创建特殊的补全项
+						// 如果找到了中文翻译，显示文本就拼接起来；否则，显示文本就是本名
+						const displayText = chineseAlias ? `${value}🔄️${chineseAlias}` : value;
+
+						// 关键：我们用本名(value)作为补全的“键”，但用拼接后的displayText作为“显示文本”
+						p[value] = { text: displayText, priority, value };
+
+						// 4. 立即返回，结束当前行的处理
+						// 这是最重要的一步，它阻止了函数末尾的通用代码覆盖我们的修改
+						return p;
+					}
 					default:
 						// Word,alias,priority
 						text = n[1];
